@@ -7,8 +7,13 @@ def remove_enclosed_numbers(text):
     """Remove all numbers enclosed in square brackets."""
     return re.sub(r'\[\d+\]', '', text)
 
+
+new = input('enter what u wanna search about').lower()
+t = new.title().replace(" ","_")
+print(t.split('_'))
+wikipedia_link = f'https://en.wikipedia.org/wiki/{t}'
 # Fetch and parse the Wikipedia page
-toi = requests.get('https://en.wikipedia.org/wiki/Dog').text
+toi = requests.get(wikipedia_link).text
 soup = BeautifulSoup(toi, 'lxml')
 container = soup.find('div', {'class': 'mw-content-ltr mw-parser-output'})
 para = container.find_all('p')
@@ -16,7 +21,7 @@ para = container.find_all('p')
 plist = []
 # Identify paragraphs containing the keyword
 for p in range(len(para)):
-    if 'dog' in para[p].text.lower():
+    if t.split('_')[0].lower() in para[p].text.lower():
         plist.append(p)
 
 # Extract and clean the required text
