@@ -27,12 +27,27 @@ def remove_enclosed_numbers(text):
 
 def fetch_wikipedia_page(keyword):
     """Fetch and parse the Wikipedia page for the given keyword."""
-    formatted_input = keyword.title().replace(" ","_")
+    formatted_input = keyword.title().replace(" ", "_")
     wikipedia_link = f'https://en.wikipedia.org/wiki/{formatted_input}'
-    page_content = requests.get(wikipedia_link).text
+    
+    try:
+        page_content = requests.get(wikipedia_link).text
+    except requests.exceptions.RequestException as e:
+        raise ValueError(f"Network error occurred: {e}")
+    
+    # Check if the page contains 'Wikipedia does not have an article with this exact name'
+    if 'Wikipedia does not have an article with this exact name' in page_content:
+        raise ValueError(f"Page not found for the keyword '{keyword}'")
+    
     soup = BeautifulSoup(page_content, 'lxml')
     container = soup.find('div', {'class': 'mw-content-ltr mw-parser-output'})
+    
+    # Additional check if the container is empty
+    if container is None:
+        raise ValueError(f"Page content could not be found for the keyword '{keyword}'")
+    
     return container
+
 
 def extract_basic_information(container, keyword):
     """Extract the first paragraph containing the keyword."""
@@ -88,7 +103,11 @@ def access_section(container, list_of_contents, contents):
 def main():
     while True:
         init_user_input = input(f"{ANSI['BRIGHT CYAN']}Enter what you want to search about: {ANSI['RESET']}").lower()
-        container = fetch_wikipedia_page(init_user_input)
+        try:
+            container = fetch_wikipedia_page(init_user_input)
+        except ValueError as e:
+            print(f"{ANSI['RED']}{e}{ANSI['RESET']}")
+            continue
         
         extract_basic_information(container, init_user_input)
         
