@@ -6,87 +6,72 @@ def remove_enclosed_numbers(text):
     """Remove all numbers enclosed in square brackets."""
     return re.sub(r'\[\d+\]', '', text)
 
-def fetch_wikipedia_page(topic):
-    """Fetch the Wikipedia page for the given topic."""
-    wikipedia_link = f'https://en.wikipedia.org/wiki/{topic}'
-    response = requests.get(wikipedia_link)
-    if response.status_code == 200:
-        return response.text
-    else:
-        raise Exception(f"Failed to fetch the Wikipedia page for {topic}")
-
-def parse_page_content(html_content):
-    """Parse the HTML content of the Wikipedia page."""
-    soup = BeautifulSoup(html_content, 'lxml')
+def fetch_wikipedia_page(keyword):
+    """Fetch and parse the Wikipedia page for the given keyword."""
+    formatted_input = keyword.title().replace(" ","_")
+    wikipedia_link = f'https://en.wikipedia.org/wiki/{formatted_input}'
+    page_content = requests.get(wikipedia_link).text
+    soup = BeautifulSoup(page_content, 'lxml')
     container = soup.find('div', {'class': 'mw-content-ltr mw-parser-output'})
+    return container
+
+def extract_basic_information(container, keyword):
+    """Extract the first paragraph containing the keyword."""
     paragraphs = container.find_all('p')
-    contents = container.find_all('div', {'class': "mw-heading mw-heading2"})
-    return paragraphs, contents
+    plist = [p for p in paragraphs if keyword.split('_')[0].lower() in p.text.lower()]
 
-def extract_basic_info(paragraphs, keyword):
-    """Extract basic information containing the keyword."""
-    plist = [p for p in range(len(paragraphs)) if keyword.lower() in paragraphs[p].text.lower()]
     if plist:
-        required_text = remove_enclosed_numbers(paragraphs[plist[0]].text)
-        return required_text
+        required_text = remove_enclosed_numbers(plist[0].text)
+        print("Basic information about the page:")
+        print(required_text)
     else:
-        return "No relevant paragraphs found."
+        print("No relevant paragraphs found.")
 
-def extract_table_of_contents(contents):
-    """Extract the table of contents from the Wikipedia page."""
-    return [line.text.split('[')[0].strip().lower() for line in contents]
-
-def display_content_section(contents, section_name):
-    """Display the content of the specified section."""
-    index = contents.index(section_name)
-    next_tag = contents[index]
-    next_sibling = next_tag.find_next_sibling()
-
-    section_content = []
-    while next_sibling:
-        if next_sibling.name == 'div' and 'mw-heading' in next_sibling.get('class', []):
-            if 'mw-heading2' in next_sibling.get('class', []):
-                break
-            if 'mw-heading3' in next_sibling.get('class', []):
-                section_content.append(next_sibling.text.strip())
-        elif next_sibling.name == 'p':
-            section_content.append(remove_enclosed_numbers(next_sibling.text))
-        next_sibling = next_sibling.find_next_sibling()
-    return section_content
-
-def main():
-    topic = input('Enter what you want to search about: ').lower()
-    formatted_topic = topic.title().replace(" ", "_")
-    keyword = formatted_topic.split('_')[0]
-
-    try:
-        html_content = fetch_wikipedia_page(formatted_topic)
-    except Exception as e:
-        print(e)
-        return
-
-    paragraphs, contents = parse_page_content(html_content)
-
-    basic_info = extract_basic_info(paragraphs, keyword)
-    print("Basic information about the page:")
-    print(basic_info)
-
-    table_of_contents = extract_table_of_contents(contents)
+def get_table_of_contents(container):
+    """Get the table of contents for the wiki page."""
+    contents = container.find_all('div', {'class': "mw-heading mw-heading2"})
+    list_of_contents = [line.text.split('[')[0].strip().lower() for line in contents]
     print("\nTable of contents for wiki page:")
-    for item in table_of_contents:
+    for item in list_of_contents:
         print(item)
+    return list_of_contents, contents
 
+def access_section(container, list_of_contents, contents):
+    """Prompt the user to select a section and print its content."""
     flag = True
     while flag:
         user_input = input("Enter the part you want to access: ").lower()
-        if user_input in table_of_contents:
+        if user_input in list_of_contents:
             flag = False
-            section_content = display_content_section(contents, user_input)
+            index = list_of_contents.index(user_input)
+            next_tag = contents[index]
+            next_sibling = next_tag.find_next_sibling()
+
             print(f"\nContent of the '{user_input}' section:")
-            for line in section_content:
-                print(line)
+            while next_sibling:
+                # Print content until the next section heading is encountered
+                if next_sibling.name == 'div' and 'mw-heading' in next_sibling.get('class', []):
+                    # Check if it's a heading with class 'mw-heading mw-heading2'
+                    if 'mw-heading2' in next_sibling.get('class', []):
+                        break
+                    # Also print div with class 'mw-heading mw-heading3'
+                    if 'mw-heading3' in next_sibling.get('class', []):
+                        print(next_sibling.text.strip())
+                elif next_sibling.name == 'p':
+                    print(remove_enclosed_numbers(next_sibling.text))
+                next_sibling = next_sibling.find_next_sibling()
         else:
             print("No such part found.")
+
+def main():
+    init_user_input = input('Enter what you want to search about: ').lower()
+    container = fetch_wikipedia_page(init_user_input)
+    
+    extract_basic_information(container, init_user_input)
+    
+    list_of_contents, contents = get_table_of_contents(container)
+    
+    access_section(container, list_of_contents, contents)
 
 if __name__ == "__main__":
     main()
