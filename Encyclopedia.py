@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import re
 import os
-
+import time
 # ANSI color codes for styling the terminal output
 ANSI = {
     "RED": "\033[31m",
@@ -80,6 +80,7 @@ def get_table_of_contents(container):
     return list_of_contents, contents
 
 def clear():
+    """Clear the terminal screen."""
     # Try Windows clear command
     if os.name == 'nt':
         os.system('cls')
@@ -128,9 +129,14 @@ def print_table_of_contents(list_of_contents):
         print(f"{ANSI['GREEN']}{item}{ANSI['RESET']}")
 
 def main():
+    """Main function to run the program."""
+    clear()
+    print(f"{ANSI['UNDERLINE']}Welcome to Saumya's Encyclopedia Project!")
+    time.sleep(2)
+    clear()
     while True:
         # Prompt user for input keyword
-        init_user_input = input(f"{ANSI['BRIGHT CYAN']}Enter what you want to search about: {ANSI['RESET']}").lower()
+        init_user_input = input(f"{ANSI['BRIGHT CYAN']}Enter what you want to search about:{ANSI['RESET']}").lower()
         clear()
         try:
             container = fetch_wikipedia_page(init_user_input)
@@ -141,12 +147,13 @@ def main():
         extract_basic_information(container, init_user_input)
         
         list_of_contents, contents = get_table_of_contents(container)
-        
+
         access_section(container, list_of_contents, contents)
         
         # Ask if the user wants to search for something else
-        continue_search = input(f"{ANSI['BLUE']}Do you want to search for something else? (yes/no): {ANSI['RESET']}").strip().lower()
+        continue_search = input(f"{ANSI['BLUE']}Do you want to search for something else? (yes/no):{ANSI['RESET']}").strip().lower()
         if continue_search == 'no':
+            time.sleep(1)
             print(f"{ANSI['HRED']}Exiting the program. Goodbye!{ANSI['RESET']}")
             break
 
