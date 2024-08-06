@@ -3,6 +3,8 @@ import requests
 import re
 import os
 import time
+import Levenshtein
+
 # ANSI color codes for styling the terminal output
 ANSI = {
     "RED": "\033[31m",
@@ -65,7 +67,7 @@ def extract_basic_information(container, keyword):
         # Remove enclosed numbers and print the required text
         required_text = remove_enclosed_numbers(plist[0].text)
         print(f"{ANSI['BLUE']}{ANSI['BOLD']}Basic information about the page:{ANSI['RESET']}")
-        print(f"{ANSI['GREEN']}{ANSI['ITALIC']}{required_text}{ANSI['RESET']}")
+        print(f"{ANSI['RED']}No text found in the paragraph.{ANSI['RESET']}") if len(required_text)==0 else print(f"{ANSI['GREEN']}{ANSI['ITALIC']}{required_text}{ANSI['RESET']}")
     else:
         print(f"{ANSI['RED']}No relevant paragraphs found.{ANSI['RESET']}")
 
@@ -82,13 +84,13 @@ def get_table_of_contents(container):
 def clear():
     """Clear the terminal screen."""
     # Try Windows clear command
-    if os.name == 'nt':
-        os.system('cls')
-    # Otherwise, assume it's a Unix-like system and try the clear command
-    else:
-        os.system('clear')
+    os.system('cls')
 
-# Example usage
+def suggest_closest_match(user_input, list_of_contents):
+    """Suggest the closest match to the user's input using Levenshtein distance."""
+    closest_match = min(list_of_contents, key=lambda item: Levenshtein.distance(user_input, item))
+    return closest_match
+
 def access_section(container, list_of_contents, contents):
     """Prompt the user to select a section and print its content."""
     while True:
@@ -107,8 +109,7 @@ def access_section(container, list_of_contents, contents):
                     if 'mw-heading2' in next_sibling.get('class', []):
                         break
                     # Also print div with class 'mw-heading mw-heading3'
-                    if 'mw-heading3' in next_sibling.get('class', []):
-                        print(f"{ANSI['BLUE']}{ANSI['UNDERLINE']}{ANSI['BOLD']}{next_sibling.text.strip()}{ANSI['RESET']}")
+                    print(f"{ANSI['BLUE']}{ANSI['UNDERLINE']}{ANSI['BOLD']}{next_sibling.text.strip()}{ANSI['RESET']}") if 'mw-heading3' in next_sibling.get('class', []) else None
                 elif next_sibling.name == 'p':
                     print(f"{ANSI['GREEN']}{ANSI['ITALIC']}{remove_enclosed_numbers(next_sibling.text)}{ANSI['RESET']}")
                 next_sibling = next_sibling.find_next_sibling()
@@ -116,11 +117,14 @@ def access_section(container, list_of_contents, contents):
             # Ask if the user wants to access another section
             continue_search = input(f"{ANSI['BLUE']}Do you want to access another section? (yes/no): {ANSI['RESET']}").strip().lower()
             if continue_search == 'yes':
-                print_table_of_contents(list_of_contents)
+                clear()
+                print_table_of_contents(list_of_contents) 
             else:
                 break
         else:
+            closest_match = suggest_closest_match(user_input, list_of_contents)
             print(f"{ANSI['RED']}No such part found.{ANSI['RESET']}")
+            print(f"{ANSI['BLUE']}Did you mean: {closest_match}?{ANSI['RESET']}")
 
 def print_table_of_contents(list_of_contents):
     """Print the table of contents."""
@@ -154,8 +158,9 @@ def main():
         continue_search = input(f"{ANSI['BLUE']}Do you want to search for something else? (yes/no):{ANSI['RESET']}").strip().lower()
         if continue_search == 'no':
             time.sleep(1)
+            clear()
             print(f"{ANSI['HRED']}Exiting the program. Goodbye!{ANSI['RESET']}")
-            break
+            exit()
 
 if __name__ == "__main__":
     main()
